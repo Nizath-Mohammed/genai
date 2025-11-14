@@ -1,0 +1,52 @@
+import gradio as gr
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+# Load model
+model_name = "t5-small"        # you can also use "t5-base" or "facebook/bart-base"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+
+def generate_text(task, text):
+    """
+    task = type of text generation
+    text = user input
+    """
+    if task == "Summarization":
+        prompt = "summarize: " + text
+    elif task == "Paraphrasing":
+        prompt = "paraphrase: " + text
+    elif task == "Question Generation":
+        prompt = "generate question: " + text
+    else:
+        prompt = text   # default
+
+    # tokenize
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, padding=True)
+
+    # generate text
+    output = model.generate(
+        inputs["input_ids"],
+        max_length=150,
+        num_beams=4,
+        early_stopping=True
+    )
+
+    # decode
+    return tokenizer.decode(output[0], skip_special_tokens=True)
+
+# ----------------- Gradio UI -----------------
+
+task_list = ["Summarization", "Paraphrasing", "Question Generation", "Free Generation"]
+
+interface = gr.Interface(
+    fn=generate_text,
+    inputs=[
+        gr.Dropdown(task_list, label="Select Task"),
+        gr.Textbox(label="Enter your text", placeholder="Type or paste text here...", lines=6)
+    ],
+    outputs=gr.Textbox(label="Generated Output"),
+    title="AI Text-to-Text Generator",
+    description="Text Generation using T5 (Hugging Face Transformers + Gradio)"
+)
+
+interface.launch()
